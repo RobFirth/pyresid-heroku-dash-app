@@ -15,3 +15,5 @@ Delete the runtime.txt if you wish to run on Python 2.7.x instead of 3.6.x
 
 Do NOT rename or delete any other file in this folder (except this README) or else your
 app will not setup properly.
+
+use `git push mine` to update this repo.
