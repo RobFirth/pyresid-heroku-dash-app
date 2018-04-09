@@ -1,15 +1,33 @@
 # Import required libraries
+import io
+import requests
+import pickle
 import os
 from random import randint
+import numpy as np
+import pandas as pd
 
 import plotly.plotly as py
-from plotly.graph_objs import *
-
+import plotly.graph_objs as go
 import flask
 import dash
 from dash.dependencies import Input, Output, State, Event
 import dash_core_components as dcc
 import dash_html_components as html
+
+def generate_table(dataframe, max_rows=10):
+    usecolumns_df = ("residue", "EBI_section", "sent")
+    usecolumns_names = ("Residue", "Section", "Sentence Context")
+
+    return html.Table(
+        # Header
+        [html.Tr([html.Th(col) for col in usecolumns_names])] +
+
+        # Body
+        [html.Tr([
+            html.Td(dataframe.iloc[i][col]) for col in usecolumns_df
+        ]) for i in range(min(len(dataframe), max_rows))]
+    )
 
 
 # Setup the app
