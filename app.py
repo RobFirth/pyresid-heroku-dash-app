@@ -96,7 +96,7 @@ print(init_threshold)
 # residues_to_plot = df.residue.value_counts()[:n_items].index.tolist()
 
 
-app = dash.Dash()
+# app = dash.Dash() ## https://github.com/plotly/dash/issues/195
 app.css.append_css({'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'})
 
 # text_style = dict(color='#444', fontFamily='OpenSans', fontWeight=300)
