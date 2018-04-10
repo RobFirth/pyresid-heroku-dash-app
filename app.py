@@ -1,4 +1,6 @@
 # Import required libraries
+import matplotlib
+matplotlib.use('Agg') ## Avoid tkinter bug
 import io
 import requests
 import pickle
