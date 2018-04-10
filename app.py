@@ -31,7 +31,29 @@ def generate_table(dataframe, max_rows=10):
         ]) for i in range(min(len(dataframe), max_rows))]
     )
 
+def generate_highlight_table(dataframe, max_rows=10):
+    usecolumns_df = ("residue", "EBI_section", "sent")
+    usecolumns_names = ("Residue", "Section", "Sentence Context")
+    table_list = []
 
+    header = html.Tr([html.Th(col) for col in usecolumns_names])
+
+    table_list.append(header)
+
+    for i in range(min(len(dataframe), max_rows)):
+        row_list = []
+
+        for col in usecolumns_df:
+
+            if col == "sent":
+                children = [dataframe.iloc[i]["prefix"], html.Mark(dataframe.iloc[i]["string"]), dataframe.iloc[i]["postfix"]]
+                row_list.append(html.Td(html.P(children=children)))
+            else:
+                row_list.append(html.Td(dataframe.iloc[i][col]))
+
+        table_list.append(html.Tr(row_list))
+
+    return html.Table(table_list)
 # Setup the app
 # Make sure not to change this file name or the variable names below,
 # the template is configured to execute 'server' on 'app.py'
@@ -299,7 +321,7 @@ def update_dropdown(stored_data):
 )
 def update_table(stored_data, input_value):
     df=pd.read_json(stored_data, orient="split")
-    return generate_table(df[df["residue"] == input_value])
+    return generate_highlight_table(df[df["residue"] == input_value])
 
 
 
