@@ -1,4 +1,6 @@
 gunicorn>=19.7.1
+matplotlib>=2.2
+spacy==2.0.11
 plotly>=2.0.9
 dash==0.17.4
 dash-renderer==0.7.2
