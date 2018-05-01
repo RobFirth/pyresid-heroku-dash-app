@@ -17,6 +17,8 @@ from dash.dependencies import Input, Output, State, Event
 import dash_core_components as dcc
 import dash_html_components as html
 
+import pyresid as pyre
+
 def generate_table(dataframe, max_rows=10):
     usecolumns_df = ("residue", "EBI_section", "sent")
     usecolumns_names = ("Residue", "Section", "Sentence Context")
@@ -63,40 +65,16 @@ server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
 app = dash.Dash(__name__, server=server)
 
 
-# Put your Dash code here
-# app.layout = html.Div(children=[
-#     html.H1(children='Hello Dash'),
-#
-#     html.Div(children='''
-#         Dash: A web application framework for Python.
-#     '''),
-#
-#     dcc.Graph(
-#         id='example-graph',
-#         figure={
-#             'data': [
-#                 {'x': [1, 2, 3], 'y': [4, 1, 2], 'type': 'bar', 'name': 'SF'},
-#                 {'x': [1, 2, 3], 'y': [2, 4, 5], 'type': 'bar', 'name': u'Montréal'},
-#             ],
-#             'layout': {
-#                 'title': 'Dash Data Visualization'
-#             }
-#         }
-#     )
-# ])
-
-
-
 ## West-Life
 
 # "PMC4942797" -  Bilayer Membrane Modulation of Membrane Type 1 Matrix Metalloproteinase (MT1-MMP) Structure and Proteolytic Activity - Cerofolini et al.
 # "PMC3567692" -  Gentamicin Binds to the Megalin Receptor as a Competitive Inhibitor Using the Common Ligand Binding Motif of Complement Type Repeats: INSIGHT FROM THE NMR STRUCTURE OF THE 10TH COMPLEMENT TYPE REPEAT DOMAIN ALONE AND IN COMPLEX WITH GENTAMICIN - Kragelund et al.
 # "PMC5552742" -  Kinetic and Structural Characterization of the Effects of Membrane on the Complex of Cytochrome b 5 and Cytochrome c - Gentry et al.
 
-ext_id_list = ["PMC5552742",
+ext_id_list = ["PMC5740067",
+               "PMC5552742",
                "PMC4942797",
-               # "PMC3567692", no fulltext XML
-               ]
+               "PMC5283653","PMC5356443","PMC5389525","PMC5388407","PMC5415892","PMC5740067",]# "PMC3567692", no fulltext XML]
 
 ext_id = ext_id_list[0]
 
@@ -143,8 +121,17 @@ app.layout = html.Div(children=[
     ], className="row", id="logo-row"),
     html.Hr(),
     html.Div(children=[
+        dcc.Markdown(
+            """This is a dashboard using `pyresid`. `pyresid` is available via `pip` on PyPi - [https://pypi.org/project/pyresid/](https://pypi.org/project/pyresid/)
+            """),
         html.P(
-            "A dashboard using pyresid.")]),
+            "Powered by: "),
+        html.Div(children=[html.Div(children=[html.P(),], className="two columns"),
+                           html.Div(html.Img(src="https://raw.githubusercontent.com/RobFirth/RobFirth.github.io/master/images/pdbe_logo.png", width="100%"), className="four columns"),
+                           html.Div(html.Img(src="https://raw.githubusercontent.com/RobFirth/RobFirth.github.io/master/images/spacy_logo.png", width="100%"), className="four columns"),
+                           html.Div(children=[html.P(),], className="two columns"),
+                          ], className="row")
+        ]),
     html.Hr(),
     ## The Actual Business End!
     html.Div(children=[
@@ -206,14 +193,24 @@ app.layout = html.Div(children=[
     dash.dependencies.Output(component_id="ext_id-output-div", component_property='children'),
     [dash.dependencies.Input(component_id="ext_id-select-input", component_property='value')]
 )
+# def update_output_div(input_ext_id):
+#     meta = pyre.get_metadata(ext_id=input_ext_id)
+#     print(meta)
+#     return ['You\'ve entered {}\n'.format(input_ext_id),
+#             html.H4(meta["title"]),
+#             html.P(html.Strong(meta["authors"][0]["surname"] + " et al."))
+#             ]
 def update_output_div(input_ext_id):
     meta = pyre.get_metadata(ext_id=input_ext_id)
     print(meta)
     return ['You\'ve entered {}\n'.format(input_ext_id),
-            html.H4(meta["title"]),
-            html.P(html.Strong(meta["authors"][0]["surname"] + " et al."))
+            html.A(html.H4(meta["title"] + " - " + meta["authors"][0]["surname"] + " et al. "+meta["dates"]["accepted"]["year"]),
+                   href="https://europepmc.org/articles/"+input_ext_id,
+                   target="_blank"),
+            html.P(", ".join([i["given_name"][0]+". "+i["surname"] for i in meta["authors"]])),
+            dcc.Markdown("__Abstract__"),
+            html.P(meta["abstract"]),
             ]
-
 
 @app.callback(dash.dependencies.Output('intermediate-value', 'children'),
     [dash.dependencies.Input(component_id="ext_id-select-input", component_property='value')]
@@ -322,7 +319,7 @@ def update_dropdown(stored_data):
 )
 def update_table(stored_data, input_value):
     df=pd.read_json(stored_data, orient="split")
-    return generate_highlight_table(df[df["residue"] == input_value])
+    return generate_highlight_table(df[df["residue"] == input_value], max_rows=len(df[df["residue"] == input_value]))
 
 
 
