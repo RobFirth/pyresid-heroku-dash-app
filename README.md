@@ -17,3 +17,5 @@ Do NOT rename or delete any other file in this folder (except this README) or el
 app will not setup properly.
 
 use `git push mine` to update this repo.
+deploy with `git push heroku master`
+use `heroku restart` to restart dynos

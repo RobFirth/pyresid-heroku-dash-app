@@ -11,4 +11,5 @@ Flask-Compress==1.4.0
 Flask-Cors==3.0.3
 numpy==1.14.2
 pandas==0.20.3
-pyresid>=0.4
+pyresid>=0.5.1
+https://github.com/explosion/spacy-models/releases/download/en_core_web_md-2.0.0/en_core_web_md-2.0.0.tar.gz
