@@ -8,10 +8,6 @@ import os
 from random import randint
 import numpy as np
 import pandas as pd
-import spacy as spacy
-nlp = spacy.load('en_core_web_md')
-
-import pyresid as pyre
 
 import plotly.plotly as py
 import plotly.graph_objs as go
@@ -65,37 +61,68 @@ def generate_highlight_table(dataframe, max_rows=10):
 server = flask.Flask(__name__)
 server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
 app = dash.Dash(__name__, server=server)
-# Dash CSS
-app.css.append_css({'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'})
-# Loading screen CSS
-app.css.append_css({"external_url": "https://codepen.io/chriddyp/pen/brPBPO.css"})
 
-ext_id = "PMC5740067"
 
-text_dict = pyre.get_text(ext_id)
-fulltext = pyre.reconstruct_fulltext(text_dict, tokenise=False)
+# Put your Dash code here
+# app.layout = html.Div(children=[
+#     html.H1(children='Hello Dash'),
+#
+#     html.Div(children='''
+#         Dash: A web application framework for Python.
+#     '''),
+#
+#     dcc.Graph(
+#         id='example-graph',
+#         figure={
+#             'data': [
+#                 {'x': [1, 2, 3], 'y': [4, 1, 2], 'type': 'bar', 'name': 'SF'},
+#                 {'x': [1, 2, 3], 'y': [2, 4, 5], 'type': 'bar', 'name': u'Montréal'},
+#             ],
+#             'layout': {
+#                 'title': 'Dash Data Visualization'
+#             }
+#         }
+#     )
+# ])
 
-source = pyre.SourceClass()
-source.ext_id = ext_id
-source.text_dict = text_dict
-source.sections = list(zip([text_dict[i]["title"] for i in text_dict], [text_dict[i]["offset"] for i in text_dict]))
-source.fulltext = fulltext
-source.doc = nlp(source.fulltext)
-source = pyre.add_sections_to_source(source)
 
-meta = pyre.get_metadata(ext_id)
 
-remake=False
+## West-Life
+
+# "PMC4942797" -  Bilayer Membrane Modulation of Membrane Type 1 Matrix Metalloproteinase (MT1-MMP) Structure and Proteolytic Activity - Cerofolini et al.
+# "PMC3567692" -  Gentamicin Binds to the Megalin Receptor as a Competitive Inhibitor Using the Common Ligand Binding Motif of Complement Type Repeats: INSIGHT FROM THE NMR STRUCTURE OF THE 10TH COMPLEMENT TYPE REPEAT DOMAIN ALONE AND IN COMPLEX WITH GENTAMICIN - Kragelund et al.
+# "PMC5552742" -  Kinetic and Structural Characterization of the Effects of Membrane on the Complex of Cytochrome b 5 and Cytochrome c - Gentry et al.
+
+ext_id_list = ["PMC5552742",
+               "PMC4942797",
+               # "PMC3567692", no fulltext XML
+               ]
+
+ext_id = ext_id_list[0]
 
 r = requests.get("https://github.com/RobFirth/pyresid-heroku-dash-app/raw/master/" + ext_id + ".pkl")
 full_matches = pickle.load(io.BytesIO(r.content))
 
 df = pd.DataFrame([match.__dict__ for match in full_matches])
 
-n_items = 5
-w_init_threshold = np.where(np.array([len(df.residue.value_counts()[df.residue.value_counts() > i]) for i in df.residue.value_counts().unique()[::-1]])>=n_items)[0][-1]
-init_threshold = [len(df.residue.value_counts()[df.residue.value_counts() > i]) for i in df.residue.value_counts().unique()[::-1]][w_init_threshold]
+n_items = 2
+if len(df.residue.unique()) <= n_items:
+    init_threshold = 0
+else:
+    threshold_count = np.array([[i, len(df.residue.unique()[df.residue.value_counts() >= i])] for i in
+                                range(df.residue.value_counts().max())]).T
+    print(threshold_count)
+    init_threshold = np.where(threshold_count[1] <= n_items)[0][0]
+print(init_threshold)
+    # w_init_threshold = np.where(np.array([len(df.residue.value_counts()[df.residue.value_counts() > i]) for i in df.residue.value_counts().unique()[::-1]])>=n_items)[0][-1]
+    # init_threshold = [len(df.residue.value_counts()[df.residue.value_counts() > i]) for i in df.residue.value_counts().unique()[::-1]][w_init_threshold]
+# residues_to_plot = df.residue.value_counts()[:n_items].index.tolist()
 
+
+# app = dash.Dash() ## https://github.com/plotly/dash/issues/195
+app.css.append_css({'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'})
+
+# text_style = dict(color='#444', fontFamily='OpenSans', fontWeight=300)
 text_style = dict()
 
 app.layout = html.Div(children=[
@@ -116,43 +143,42 @@ app.layout = html.Div(children=[
     ], className="row", id="logo-row"),
     html.Hr(),
     html.Div(children=[
-        dcc.Markdown(
-            """This is a dashboard using `pyresid`. `pyresid` is available via `pip` on PyPi - [https://pypi.org/project/pyresid/](https://pypi.org/project/pyresid/)
-            """),
         html.P(
-            "Powered by: "),
-        html.Div(children=[html.Div(children=[html.P(),], className="two columns"),
-                           html.Div(html.Img(src="https://raw.githubusercontent.com/RobFirth/RobFirth.github.io/master/images/pdbe_logo.png", width="100%"), className="four columns"),
-                           html.Div(html.Img(src="https://raw.githubusercontent.com/RobFirth/RobFirth.github.io/master/images/spacy_logo.png", width="100%"), className="four columns"),
-                           html.Div(children=[html.P(),], className="two columns"),
-                          ], className="row")
-        ]),
+            "A dashboard using pyresid.")]),
     html.Hr(),
     ## The Actual Business End!
     html.Div(children=[
-    dcc.Input(
-        id="ext_id-input",
-        placeholder='Enter an ePMC id',
-        type='text',
-        value=ext_id),
-    html.Button(id='ext_id-submit-button', children='Extract'),
+        dcc.Dropdown(
+            id="ext_id-select-input",
+            options=[{'label': i, 'value': i} for i in list(ext_id_list)
+                     ],
+            value=ext_id_list[0]
+            ),
     html.Div(id="ext_id-output-div")
     ], className="row", id="ext_id-row"),
 
     # Hidden div inside the app that stores the intermediate value
     html.Div(id='intermediate-value', style={'display': 'none'}),
 
+    # html.Div(children=[
+    # ], className="row", id="info-row"),
+    # print("foo"),
     html.Div(children=[
     html.H4("Residue Location Plot"),
     dcc.Graph(
         id="locplot-with-slider"
     ),
     html.Div(children=html.H5("Select the threshold number of mentions:")),
+    print(init_threshold),
     html.Div(html.Div(dcc.Slider(
         id="residue-slider",
         min = df.residue.value_counts().min(),
-        max = df.residue.value_counts().max(),value=init_threshold,
-        step=None,marks={str(value) : str(value) for value in df.residue.value_counts().unique()[::-1]}
+        max = df.residue.value_counts().max(),
+        # value=df.residue.value_counts().max(),
+        value=init_threshold,
+        step=None,
+        # marks=list(range(df.residue.value_counts().max()))
+        marks={str(value) : str(value) for value in df.residue.value_counts().unique()[::-1]}
         ),
         id="residue-slider-div", style = {'textAlign': 'center'}
     )),
@@ -168,126 +194,53 @@ app.layout = html.Div(children=[
     id="residue_select-input-div"),
     html.Div(id="table_anno-div")
     ], className="row", id="residue-row"),
+    # html.Hr(),
     html.Div(children=[
     html.Footer("2018 - Rob Firth; STFC Hartree Centre; West-Life")
     ], className="row", id="footer-row"),
 ], className="container")
 
 
+
 @app.callback(
     dash.dependencies.Output(component_id="ext_id-output-div", component_property='children'),
-    [dash.dependencies.Input(component_id="ext_id-submit-button", component_property="n_clicks")],
-    [dash.dependencies.State(component_id='ext_id-input', component_property='value')]
+    [dash.dependencies.Input(component_id="ext_id-select-input", component_property='value')]
 )
-def update_output_div(n_clicks, input_ext_id):
+def update_output_div(input_ext_id):
     meta = pyre.get_metadata(ext_id=input_ext_id)
     print(meta)
     return ['You\'ve entered {}\n'.format(input_ext_id),
-            html.A(html.H4(meta["title"] + " - " + meta["authors"][0]["surname"] + " et al. "+meta["dates"]["accepted"]["year"]),
-                   href="https://europepmc.org/articles/"+input_ext_id,
-                   target="_blank"),
-            html.P(", ".join([i["given_name"][0]+". "+i["surname"] for i in meta["authors"]])),
-            dcc.Markdown("__Abstract__"),
-            html.P(meta["abstract"]),
+            html.H4(meta["title"]),
+            html.P(html.Strong(meta["authors"][0]["surname"] + " et al."))
             ]
 
+
 @app.callback(dash.dependencies.Output('intermediate-value', 'children'),
-    [dash.dependencies.Input(component_id="ext_id-submit-button", component_property="n_clicks")],
-    [dash.dependencies.State(component_id='ext_id-input', component_property='value')]
+    [dash.dependencies.Input(component_id="ext_id-select-input", component_property='value')]
 )
-def collect_data(n_clicks, value):
-    print(n_clicks, value)
+def collect_data(value):
+    print(value)
     ext_id = value
 
-    text_dict = pyre.get_text(ext_id)
-    fulltext = pyre.reconstruct_fulltext(text_dict, tokenise=False)
-
-    source = pyre.SourceClass()
-    source.ext_id = ext_id
-    source.text_dict = text_dict
-    source.sections = list(zip([text_dict[i]["title"] for i in text_dict], [text_dict[i]["offset"] for i in text_dict]))
-    source.fulltext = fulltext
-
-    source.doc = nlp(source.fulltext)
-
     r = requests.get("https://github.com/RobFirth/pyresid-heroku-dash-app/raw/master/" + ext_id + ".pkl")
-
-    if n_clicks and r.status_code != 200:
-
-        matches = pyre.identify_residues(source.fulltext)
-
-        full_matches = pyre.locate_residues(source, matches, nlp=nlp, decompose=True, verbose=False)
-
-        for match in full_matches:
-            match.token = match.token.string
-            match.sent = match.sent.string
-    else:
-        full_matches = pickle.load(io.BytesIO(r.content))
+    full_matches = pickle.load(io.BytesIO(r.content))
 
     df = pd.DataFrame([match.__dict__ for match in full_matches])
 
     return df.to_json(date_format='iso', orient='split')
 
+
 @app.callback(
-    dash.dependencies.Output(component_id='locplot-with-slider', component_property='figure'),
-    [dash.dependencies.Input(component_id='intermediate-value', component_property='children'),
-     dash.dependencies.Input(component_id='residue-slider', component_property='value')]
+    dash.dependencies.Output('locplot-with-slider', 'figure'),
+    [dash.dependencies.Input('intermediate-value', 'children'),
+     dash.dependencies.Input('residue-slider', 'value')]
 )
 def update_figure(stored_data, selected_valuecount):
     df=pd.read_json(stored_data, orient="split")
-
     filtered_df = df[df["residue"].isin(df.residue.value_counts()[df.residue.value_counts() >= selected_valuecount].index.tolist())]
 
-    shapes = []
-    annotations = []
-
-    height = len(filtered_df.residue.value_counts()) + 1
-
-    for i, sec in enumerate(source.section_matches):
-
-
-        shapes.append(
-            {"type" : "line",
-             'yref': 'paper',
-             "x0" : sec.start_token_number,
-             "x1" : sec.start_token_number,
-             "y0" : 0,
-             "y1" : 1,
-             "line" : {"width" : 2}}
-        )
-
-        if i%2:
-            fillcolour = "rgba(255, 255, 255, 0.1)"
-        else:
-            fillcolour = "rgba(0, 0, 0, 0.1)"
-
-        shapes.append(
-            {"type" : "rect",
-             "yref" : "paper",
-             "x0": sec.start_token_number,
-             "x1": sec.end_token_number,
-             "y0": 0,
-             "y1": 1,
-             'fillcolor': fillcolour,
-             "line" : {"color" : fillcolour},
-             "layer": 'below'
-             }
-        )
-
-        annotations.append(
-            {
-            "yref" : "paper",
-            "x" : sec.start_token_number,
-            "y" : 0.05,
-            "text" : sec.EBI_title,
-            "showarrow" : False,
-            "textangle" : -90,
-            "xshift" : 10,
-            "font" : {"size" : 16},
-            }
-        )
-
     points = []
+
 
     for i, j in enumerate(filtered_df.residue.value_counts().index):
         print(j)
@@ -308,16 +261,12 @@ def update_figure(stored_data, selected_valuecount):
     return {
         "data" : points,
         "layout": go.Layout(
-            xaxis=dict(title="Token Number",
-                       showspikes=True),
-            yaxis=dict(title='Residue',
-                       tickvals=list(np.arange(len(filtered_df.residue.value_counts().index))+1)[::-1],
+            xaxis=dict(title="Token Number", showspikes=True),
+            yaxis=dict(title='Residue', tickvals=list(np.arange(len(filtered_df.residue.value_counts().index))+1)[::-1],
                        ticktext=[item[0]+" ("+str(item[1])+")" for item in zip([i for i in filtered_df.residue.value_counts().index], [j for j in filtered_df.residue.value_counts()])],
                        showspikes=True),
-            margin={'l': "100", 'b': "5%", 't': "0", 'r': "5%", "pad":5},
-            hovermode='closest',
-            shapes=shapes,
-            annotations=annotations
+            margin={'l': "15%", 'b': "5%", 't': "2%", 'r': "5%"},
+            hovermode='closest'
         )
     }
 
@@ -328,12 +277,25 @@ def update_figure(stored_data, selected_valuecount):
 )
 def update_slider(stored_data):
     df=pd.read_json(stored_data, orient="split")
+
+    n_items = 5
+    if len(df.residue.unique()) <= n_items:
+        init_threshold = 0
+    else:
+        threshold_count = np.array([[i, len(df.residue.unique()[df.residue.value_counts() >= i])] for i in
+                                    range(df.residue.value_counts().max())]).T
+        print(threshold_count)
+        init_threshold = np.where(threshold_count[1] <= n_items)[0][0]
+    print(init_threshold)
+
     return html.Div(dcc.Slider(
         id="residue-slider",
         min = df.residue.value_counts().min(),
         max = df.residue.value_counts().max(),
+        # value=df.residue.value_counts().max(),
         value=init_threshold,
         step=None,
+        # marks=list(range(df.residue.value_counts().max()))
         marks={str(value) : str(value) for value in df.residue.value_counts().unique()[::-1]}
         )
     )
@@ -360,7 +322,9 @@ def update_dropdown(stored_data):
 )
 def update_table(stored_data, input_value):
     df=pd.read_json(stored_data, orient="split")
-    return generate_highlight_table(df[df["residue"] == input_value], max_rows=len(df[df["residue"] == input_value]))
+    return generate_highlight_table(df[df["residue"] == input_value])
+
+
 
 # Run the Dash app
 if __name__ == '__main__':
